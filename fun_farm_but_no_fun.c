@@ -31,6 +31,13 @@ int main()
 	int userAction;
 	int inventory[INVENTORY_SIZE] = { 6, 4, 0, 0, 3, 1, 1, 8, 2, 9 };
 	
+	char farmer_name[32] = "";
+	printf("Добро пожаловать! Введите имя вашего фермера: ");
+	if (scanf("%31s", farmer_name) != 1) {
+		strcpy(farmer_name, "Безымянный");
+	}
+	while (getchar() != '\n');
+
 	while (1) {
 		printf("\n=== ПЕРВЫЕ ШАГИ ВЕСЁЛОГО ФЕРМЕРА ===\n");
 		printf(" 0. Выйти из игры\n");
