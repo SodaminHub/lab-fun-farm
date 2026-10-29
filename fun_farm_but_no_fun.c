@@ -14,6 +14,8 @@
 #define ID_ROPE 8
 #define ID_COIN 9
 
+#define MAX_ITEMS 10
+#define MAX_NAME_LEN 32
 
 int safe_scan(int* value) { // Проверяю на введение числа, в противном случае возвращаю ошибку и обратно к введению значения.
 	if (scanf("%d", value) != 1) {
@@ -22,6 +24,34 @@ int safe_scan(int* value) { // Проверяю на введение числа
 		return 0;
 	}
 	return 1;
+}
+
+void load_item_catalog(char catalog[MAX_ITEMS][MAX_NAME_LEN]) { // Считываю названия из файла в этот массив
+	FILE* f_items = fopen("items.txt", "r");
+
+	if (f_items != NULL) {
+		int temp_id;
+		char temp_name[MAX_NAME_LEN];
+		while (fscanf(f_items, "%d %31s", &temp_id, temp_name) == 2) {
+			if (temp_id >= 0 && temp_id < MAX_ITEMS) {
+				strcpy(catalog[temp_id], temp_name);
+			}
+		}
+		fclose(f_items);
+	}
+	else { // В противном случаем предупреждаю об отсутсвии шайтан файла и заполняю массив дефолтными нормисами
+		printf("Предупреждение: Файл items.txt не найден! Загружены стандартные названия.\n");
+		strcpy(catalog[ID_EMPTY], "Пусто");
+		strcpy(catalog[ID_WOOD], "Древесина");
+		strcpy(catalog[ID_STONE], "Камень");
+		strcpy(catalog[ID_SEEDS], "Семена");
+		strcpy(catalog[ID_HOE], "Тяпка");
+		strcpy(catalog[ID_APPLE], "Яблоко");
+		strcpy(catalog[ID_SHOVEL], "Лопата");
+		strcpy(catalog[ID_IRON], "Железо");
+		strcpy(catalog[ID_ROPE], "Веревка");
+		strcpy(catalog[ID_COIN], "Монета");
+	}
 }
 
 int main()
@@ -38,6 +68,9 @@ int main()
 	}
 	while (getchar() != '\n');
 
+	char item_names[MAX_ITEMS][MAX_NAME_LEN];
+	load_item_catalog(item_names);
+	
 	while (1) {
 		printf("\n=== ПЕРВЫЕ ШАГИ ВЕСЁЛОГО ФЕРМЕРА ===\n");
 		printf(" 0. Выйти из игры\n");
@@ -81,36 +114,12 @@ int main()
 			break;
 		}
 
+
 		case 3:
 
 			printf("\n--- СОДЕРЖИМОЕ ИНВЕНТАРЯ ---\n");
-			for (int i = 0; i < INVENTORY_SIZE; i++) {
-				printf("Слот %d: [%d]", i, inventory[i]); // Вывожу индекс слота и ID предмета
-
-				switch (inventory[i]) { // Соотнёс ID предмета и напечатал его название для игрока
-
-				case ID_WOOD:     printf("(Древесина)"); break;
-
-				case ID_STONE:    printf("(Камень)"); break;
-
-				case ID_SEEDS:    printf("(Семена)"); break;
-
-				case ID_HOE:      printf("(Тяпка)"); break;
-
-				case ID_APPLE:    printf("(Яблоко)"); break;
-
-				case ID_SHOVEL:   printf("(Лопата)"); break;
-
-				case ID_IRON:     printf("(Железо)"); break;
-
-				case ID_ROPE:     printf("(Веревка)"); break;
-
-				case ID_COIN:     printf("(Монета)"); break;
-
-				default:          printf("(Пусто)"); break;
-
-				}
-				printf("\n");
+			for (int i = 0; i < INVENTORY_SIZE; i++) { // УБИЛ и УНИЧТОЖИЛ этот ваш СВИЧ и теперь оно просто подставляет название вещи из item_names по его ID
+				printf("Слот %d: [%d] - %s\n", i, inventory[i], item_names[inventory[i]]);
 			}
 			break;
 
