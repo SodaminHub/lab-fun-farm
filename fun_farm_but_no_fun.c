@@ -189,6 +189,34 @@ int main()
 			}
 			break;
 		}
+		case 7: {
+			char search_name[MAX_NAME_LEN];
+			printf("Введите название предмета для поиска: ");
+			if (scanf("%31s", search_name) != 1) break;
+			while (getchar() != '\n');
+
+			int target_id = find_item_id_by_name(item_names, search_name);
+
+			if (target_id == -1) {
+				printf("Предмета с названием \"%s\" нет в каталоге игры.\n", search_name);
+				break;
+			}
+
+			int found_slots = 0;
+			printf("Результаты поиска для \"%s\" (ID %d):\n", search_name, target_id);
+			for (int i = 0; i < INVENTORY_SIZE; i++) {
+				if (inventory[i] == target_id) {
+					printf("-> Найдено в слоте %d\n", i);
+					found_slots++;
+				}
+			}
+
+			if (found_slots == 0) {
+				printf("Такого предмета сейчас нет в вашем рюкзаке.\n");
+			}
+			break;
+		}
+
 		default:
 			printf("Неверный пункт меню. Попробуйте еще раз.\n");
 			break;
