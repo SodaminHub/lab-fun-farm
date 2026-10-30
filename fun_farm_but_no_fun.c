@@ -54,6 +54,34 @@ void load_item_catalog(char catalog[MAX_ITEMS][MAX_NAME_LEN]) { // Считыв�
 	}
 }
 
+int find_item_id(const char catalog[MAX_ITEMS][MAX_NAME_LEN], const char* name) {
+	for (int i = 0; i < MAX_ITEMS; i++) {
+		if (strcmp(catalog[i], name) == 0) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+int save_to_diary(const char* name, int day, int hour, const int* inv, const char catalog[MAX_ITEMS][MAX_NAME_LEN]) {
+	FILE* f_diary = fopen("diary.txt", "a");
+	if (f_diary == NULL) {
+		return 0;
+	}
+
+	fprintf(f_diary, "=== ЗАПИСЬ В ДНЕВНИКЕ ===\n");
+	fprintf(f_diary, "Фермер: %s\n", name);
+	fprintf(f_diary, "Время: %d день, %d час\n", day, hour);
+	fprintf(f_diary, "Содержимое рюкзака:\n");
+	for (int i = 0; i < INVENTORY_SIZE; i++) {
+		fprintf(f_diary, "  Слот %d: %s\n", i, catalog[inv[i]]);
+	}
+	fprintf(f_diary, "=========================\n\n");
+
+	fclose(f_diary);
+	return 1;
+}
+
 int main()
 {
 	int current_day = 1;
@@ -72,7 +100,7 @@ int main()
 	load_item_catalog(item_names);
 	
 	while (1) {
-		printf("\n=== ПЕРВЫЕ ШАГИ ВЕСЁЛОГО ФЕРМЕРА ===\n");
+		printf("\n=== ПЕРВЫЕ ШАГИ ВЕСЁЛОГО ФЕРМЕРА. Здарова, (%s) ===\n", farmer_name);
 		printf(" 0. Выйти из игры\n");
 		printf(" 1. Посмотреть на часы\n");
 		printf(" 2. Поработать на ферме\n");
@@ -80,6 +108,8 @@ int main()
 		printf(" 4. Положить предмет в инвентарь\n");
 		printf(" 5. Выбросить предмет\n");
 		printf(" 6. Проверить соседние слоты\n");
+		printf(" 7. Поиск предмета в рюкзаке по названию\n");
+		printf(" 8. Записать состояние в дневник фермера (diary.txt)\n");
 		printf("Выберите действие: ");
 
 		if (!safe_scan(&userAction)) { // Главное меню защищено от ввода букв
@@ -195,7 +225,7 @@ int main()
 			if (scanf("%31s", search_name) != 1) break;
 			while (getchar() != '\n');
 
-			int target_id = find_item_id_by_name(item_names, search_name);
+			int target_id = find_item_id(item_names, search_name);
 
 			if (target_id == -1) {
 				printf("Предмета с названием \"%s\" нет в каталоге игры.\n", search_name);
@@ -213,6 +243,25 @@ int main()
 
 			if (found_slots == 0) {
 				printf("Такого предмета сейчас нет в вашем рюкзаке.\n");
+			}
+			break;
+		}
+
+		case 8: {
+			printf("\n--- СВОДКА ДЛЯ ДНЕВНИКА ---\n");
+			printf("Фермер: %s\n", farmer_name);
+			printf("Время: %d день, %d час\n", current_day, current_hour);
+			printf("Содержимое рюкзака:\n");
+			for (int i = 0; i < INVENTORY_SIZE; i++) {
+				printf("  Слот %d: %s\n", i, item_names[inventory[i]]);
+			}
+			printf("---------------------------\n");
+
+			if (save_to_diary(farmer_name, current_day, current_hour, inventory, item_names)) {
+				printf("Запись успешно добавлена в дневник (diary.txt)!\n");
+			}
+			else {
+				printf("Ошибка: Не удалось открыть или записать в дневник!\n");
 			}
 			break;
 		}
