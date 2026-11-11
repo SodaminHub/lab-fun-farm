@@ -176,7 +176,7 @@ char** allocate_map(int height, int width) {
 }
 
 void generate_map(char** map, int height, int width) {
-	int obstacle_percent = MIN_OBSTACLE_PERCENT + rand() % (MAX_OBSTACLE_PERCENT + 1);
+	int obstacle_percent = MIN_OBSTACLE_PERCENT + rand() % (MAX_OBSTACLE_PERCENT - MIN_OBSTACLE_PERCENT + 1);
 
 	for (int i = 0; i < height; i++) {
 		for (int j = 0; j < width; j++) {
@@ -197,21 +197,68 @@ void generate_map(char** map, int height, int width) {
 	}
 }
 
-void print_map(char** map, int height, int width) {
+void print_map(char** map, int height, int width,
+	int player_y, int player_x) {
+
 	for (int i = 0; i < height; i++) {
 		for (int j = 0; j < width; j++) {
-			printf("%c ", map[i][j]);
+
+			if (i == player_y && j == player_x) {
+				printf("@ ");
+			}
+			else {
+				printf("%c ", map[i][j]);
+			}
 		}
 		printf("\n");
 	}
 }
+
+void place_stairs(char** map, int height, int width) {
+	int free_cells = 0;
+
+	for (int i = 1; i < height - 1; i++) {
+		for (int j = 1; j < width - 1; j++) {
+			if (map[i][j] == '.') {
+				free_cells++;
+			}
+		}
+	}
+
+	if (free_cells > 0) {
+		int target = rand() % free_cells;
+
+		for (int i = 1; i < height - 1; i++) {
+			for (int j = 1; j < width - 1; j++) {
+				if (map[i][j] == '.') {
+					if (target == 0) {
+						map[i][j] = 'U';
+						return;
+					}
+					target--;
+				}
+			}
+		}
+	}
+
+	int y;
+	int x;
+
+	do {
+		y = 1 + rand() % (height - 2);
+		x = 1 + rand() % (width - 2);
+	} while (y == 1 && x == 1);
+
+	map[y][x] = 'U';
+}
+
+
 void adventure(void) {
 	printf("\n=== ПРИКЛЮЧЕНИЕ ===\n");
-	int height = MIN_MAP_SIZE +
-		rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
 
-	int width = MIN_MAP_SIZE +
-		rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
+	int height = MIN_MAP_SIZE + rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
+
+	int width = MIN_MAP_SIZE + rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
 
 	char** map = allocate_map(height, width);
 
@@ -222,11 +269,18 @@ void adventure(void) {
 
 	generate_map(map, height, width);
 
+	int player_y = 1;
+	int player_x = 1;
+
+	map[player_y][player_x] = 'D';
+
+    place_stairs(map, height, width);
+
 	printf("\nРазмер карты: %d x %d\n", height, width);
-	print_map(map, height, width);
+
+	print_map(map, height, width, player_y, player_x);
 
 	free_map(map, height);
-
 }
 
 int main()
