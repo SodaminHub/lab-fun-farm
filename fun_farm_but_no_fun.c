@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
+#include <windows.h>
 
 #define INVENTORY_SIZE 10
 #define DAY_HOURS 24
@@ -19,6 +21,12 @@
 
 #define MAX_ITEMS 10
 #define MAX_NAME_LEN 32
+
+#define MIN_MAP_SIZE 5
+#define MAX_MAP_SIZE 30
+
+#define MIN_OBSTACLE_PERCENT 15
+#define MAX_OBSTACLE_PERCENT 30
 
 int safe_scan(int* value) { // Проверяю на введение числа, в противном случае возвращаю ошибку и обратно к введению значения.
 	if (scanf("%d", value) != 1) {
@@ -166,28 +174,67 @@ char** allocate_map(int height, int width) {
 
 	return map;
 }
+
+void generate_map(char** map, int height, int width) {
+	int obstacle_percent = MIN_OBSTACLE_PERCENT + rand() % (MAX_OBSTACLE_PERCENT + 1);
+
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			if (i == 0 || i == height - 1 || j == 0 || j == width - 1) {
+				map[i][j] = '#';
+			}
+			else {
+				int chance = rand() % 100;
+
+				if (chance < obstacle_percent) {
+					map[i][j] = (rand() % 2 == 0) ? 'T' : 'R';
+				}
+				else {
+					map[i][j] = '.';
+				}
+			}
+		}
+	}
+}
+
+void print_map(char** map, int height, int width) {
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			printf("%c ", map[i][j]);
+		}
+		printf("\n");
+	}
+}
 void adventure(void) {
 	printf("\n=== ПРИКЛЮЧЕНИЕ ===\n");
-	const int test_height = 5;
-	const int test_width = 5;
+	int height = MIN_MAP_SIZE +
+		rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
 
-	char** map = allocate_map(test_height, test_width);
+	int width = MIN_MAP_SIZE +
+		rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
+
+	char** map = allocate_map(height, width);
 
 	if (map == NULL) {
 		printf("Ошибка: не удалось выделить память для карты!\n");
 		return;
 	}
 
-	printf("Память для карты успешно выделена!\n");
+	generate_map(map, height, width);
 
-	free_map(map, test_height);
+	printf("\nРазмер карты: %d x %d\n", height, width);
+	print_map(map, height, width);
 
-	printf("Память карты успешно освбождена!\n");
+	free_map(map, height);
 
 }
 
 int main()
 {
+	SetConsoleOutputCP(CP_UTF8);
+	SetConsoleCP(CP_UTF8);
+
+	srand((unsigned int)time(NULL));
 	int current_day = 1;
 	int current_hour = 8;
 	int userAction;
