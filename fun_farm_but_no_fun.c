@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <windows.h>
+#include <conio.h>
 
 #define INVENTORY_SIZE 10
 #define DAY_HOURS 24
@@ -214,6 +215,62 @@ void print_map(char** map, int height, int width,
 	}
 }
 
+int control_player(char** map, int height, int width,
+	int* player_y, int* player_x, int key) {
+
+	int new_y = *player_y;
+	int new_x = *player_x;
+
+	switch (key) {
+	case 'w':
+	case 'W':
+	case L'ц':
+	case L'Ц':
+		new_y--;
+		break;
+
+	case 's':
+	case 'S':
+	case L'ы':
+	case L'Ы':
+		new_y++;
+		break;
+
+	case 'a':
+	case 'A':
+	case L'ф':
+	case L'Ф':
+		new_x--;
+		break;
+
+	case 'd':
+	case 'D':
+	case L'в':
+	case L'В':
+		new_x++;
+		break;
+
+	default:
+		return 0;
+	}
+
+	if (new_y < 0 || new_y >= height ||
+		new_x < 0 || new_x >= width) {
+		return 0;
+	}
+
+	if (map[new_y][new_x] == '#' ||
+		map[new_y][new_x] == 'T' ||
+		map[new_y][new_x] == 'R') {
+		return 0;
+	}
+
+	*player_y = new_y;
+	*player_x = new_x;
+
+	return 1;
+}
+
 void place_stairs(char** map, int height, int width) {
 	int free_cells = 0;
 
@@ -256,9 +313,11 @@ void place_stairs(char** map, int height, int width) {
 void adventure(void) {
 	printf("\n=== ПРИКЛЮЧЕНИЕ ===\n");
 
-	int height = MIN_MAP_SIZE + rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
+	int height = MIN_MAP_SIZE +
+		rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
 
-	int width = MIN_MAP_SIZE + rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
+	int width = MIN_MAP_SIZE +
+		rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
 
 	char** map = allocate_map(height, width);
 
@@ -274,15 +333,47 @@ void adventure(void) {
 
 	map[player_y][player_x] = 'D';
 
-    place_stairs(map, height, width);
+	place_stairs(map, height, width);
 
 	printf("\nРазмер карты: %d x %d\n", height, width);
 
 	print_map(map, height, width, player_y, player_x);
 
+	int key;
+
+	while (1) {
+		printf("\nУправление: W A S D (или Ц Ф Ы В) | Q - домой\n");
+
+		key = _getwch();
+
+		if (key == 'q' || key == 'Q' ||
+			key == L'й' || key == L'Й') {
+
+			if (map[player_y][player_x] == 'U') {
+				break;
+			}
+
+			printf("\nЧтобы вернуться домой, нужно найти лестницу U!\n");
+			continue;
+		}
+
+			
+
+
+		if (!control_player(map, height, width,
+			&player_y, &player_x, key)) {
+			printf("\nНельзя пройти в этом направлении!\n");
+		}
+
+		print_map(map, height, width, player_y, player_x);
+	}
+
 	free_map(map, height);
+
+	printf("\nВы вернулись обратно.\n");
 }
 
+	
 int main()
 {
 	SetConsoleOutputCP(CP_UTF8);
