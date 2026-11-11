@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define INVENTORY_SIZE 10
 #define DAY_HOURS 24
@@ -132,6 +133,59 @@ int value_inventory(const int* inv, const char catalog[MAX_ITEMS][MAX_NAME_LEN])
 	return 1;
 }
 
+void free_map(char** map, int height) {
+	if (map == NULL) {
+		return;
+	}
+	for (int i = 0; i < height; i++) {
+		free(map[i]);
+	}
+
+	free(map);
+}
+
+char** allocate_map(int height, int width) {
+	char** map = malloc(height * sizeof(char*));
+
+	if (map == NULL) {
+		return NULL;
+	}
+
+	for (int i = 0; i < height; i++) {
+		map[i] = NULL;
+	}
+
+	for (int i = 0; i < height; i++) {
+		map[i] = malloc(width * sizeof(char));
+
+		if (map[i] == NULL) {
+			free_map(map, height);
+			return NULL;
+		}
+	}
+
+	return map;
+}
+void adventure(void) {
+	printf("\n=== ПРИКЛЮЧЕНИЕ ===\n");
+	const int test_height = 5;
+	const int test_width = 5;
+
+	char** map = allocate_map(test_height, test_width);
+
+	if (map == NULL) {
+		printf("Ошибка: не удалось выделить память для карты!\n");
+		return;
+	}
+
+	printf("Память для карты успешно выделена!\n");
+
+	free_map(map, test_height);
+
+	printf("Память карты успешно освбождена!\n");
+
+}
+
 int main()
 {
 	int current_day = 1;
@@ -161,6 +215,7 @@ int main()
 		printf(" 7. Поиск предмета в рюкзаке по названию\n");
 		printf(" 8. Записать состояние в дневник фермера (diary.txt)\n");
 		printf(" 9. Оценка рюкзака у скупщика\n");
+		printf("10. Отправиться в приключение\n");
 		printf("Выберите действие: ");
 
 		if (!safe_scan(&userAction)) { // Главное меню защищено от ввода букв
@@ -332,6 +387,10 @@ int main()
 			}
 			break;
 		}
+
+		case 10:
+			adventure();
+			break;
 
 		default:
 			printf("Неверный пункт меню. Попробуйте еще раз.\n");
