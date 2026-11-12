@@ -261,7 +261,8 @@ int control_player(char** map, int height, int width,
 
 	if (map[new_y][new_x] == '#' ||
 		map[new_y][new_x] == 'T' ||
-		map[new_y][new_x] == 'R') {
+		map[new_y][new_x] == 'R' ||
+		map[new_y][new_x] == ' ') {
 		return 0;
 	}
 
@@ -271,7 +272,51 @@ int control_player(char** map, int height, int width,
 	return 1;
 }
 
-void place_stairs(char** map, int height, int width) {
+int place_stairs(char** map, int height, int width, char stair,
+	int excluded_y, int excluded_x) {
+
+	int free_cells = 0;
+
+
+	for (int i = 1; i < height - 1; i++) {
+		for (int j = 1; j < width - 1; j++) {
+			if (map[i][j] == '.' &&
+				!(i == excluded_y && j == excluded_x)) {
+				free_cells++;
+			}
+		}
+	}
+
+	if (free_cells == 0) {
+		return 0;
+	}
+
+	int target = rand() % free_cells;
+
+	for (int i = 1; i < height - 1; i++) {
+		for (int j = 1; j < width - 1; j++) {
+			if (map[i][j] == '.' &&
+				!(i == excluded_y && j == excluded_x)) {
+
+				if (target == 0) {
+					map[i][j] = stair;
+					return 1;
+				}
+
+				target--;
+			}
+		}
+	}
+
+	return 0;
+}
+
+	
+
+
+int place_stairs_up(char** map, int height, int width,
+	int* stair_y, int* stair_x) {
+
 	int free_cells = 0;
 
 	for (int i = 1; i < height - 1; i++) {
@@ -282,96 +327,275 @@ void place_stairs(char** map, int height, int width) {
 		}
 	}
 
-	if (free_cells > 0) {
-		int target = rand() % free_cells;
+	if (free_cells == 0) {
+		return 0;
+	}
 
-		for (int i = 1; i < height - 1; i++) {
-			for (int j = 1; j < width - 1; j++) {
-				if (map[i][j] == '.') {
-					if (target == 0) {
-						map[i][j] = 'U';
-						return;
-					}
-					target--;
+	int target = rand() % free_cells;
+
+	for (int i = 1; i < height - 1; i++) {
+		for (int j = 1; j < width - 1; j++) {
+			if (map[i][j] == '.') {
+
+				if (target == 0) {
+					map[i][j] = 'U';
+					*stair_y = i;
+					*stair_x = j;
+					return 1;
 				}
+
+				target--;
 			}
 		}
 	}
 
-	int y;
-	int x;
+	return 0;
+}
 
-	do {
-		y = 1 + rand() % (height - 2);
-		x = 1 + rand() % (width - 2);
-	} while (y == 1 && x == 1);
 
-	map[y][x] = 'U';
+
+
+int possible_path(char** map, int height, int width,
+	int start_y, int start_x, int target_y, int target_x) {
+
+	int visited[30][30] = { 0 };
+
+	int queue_y[900];
+	int queue_x[900];
+
+	int front = 0;
+	int rear = 0;
+
+	queue_y[rear] = start_y;
+	queue_x[rear] = start_x;
+	rear++;
+
+	visited[start_y][start_x] = 1;
+
+	int dy[4] = { -1, 1, 0, 0 };
+	int dx[4] = { 0, 0, -1, 1 };
+
+	while (front < rear) {
+
+		int y = queue_y[front];
+		int x = queue_x[front];
+		front++;
+
+		if (y == target_y && x == target_x) {
+			return 1;
+		}
+
+		for (int i = 0; i < 4; i++) {
+
+			int new_y = y + dy[i];
+			int new_x = x + dx[i];
+
+			if (new_y < 0 || new_y >= height ||
+				new_x < 0 || new_x >= width) {
+				continue;
+			}
+
+			if (visited[new_y][new_x]) {
+				continue;
+			}
+
+			if (map[new_y][new_x] == '#' ||
+				map[new_y][new_x] == 'T' ||
+				map[new_y][new_x] == 'R') {
+				continue;
+			}
+
+			visited[new_y][new_x] = 1;
+
+			queue_y[rear] = new_y;
+			queue_x[rear] = new_x;
+			rear++;
+		}
+	}
+
+	return 0;
+}
+
+int collapse_floor(char** map, int height, int width,
+	int layer, int player_y, int player_x) {
+
+	int top = 1 + layer;
+	int bottom = height - 2 - layer;
+	int left = 1 + layer;
+	int right = width - 2 - layer;
+
+	int stair_collapsed = 0;
+
+	if (top > bottom || left > right) {
+		return 0;
+	}
+
+	for (int i = top; i <= bottom; i++) {
+		for (int j = left; j <= right; j++) {
+
+			if (i != top && i != bottom &&
+				j != left && j != right) {
+				continue;
+			}
+
+			// Не обрушиваем клетку, на которой стоит герой
+			if (i == player_y && j == player_x) {
+				continue;
+			}
+
+			// Проверяем, не провалилась ли лестница вверх
+			if (map[i][j] == 'U') {
+				stair_collapsed = 1;
+			}
+
+			map[i][j] = ' ';
+		}
+	}
+
+	return stair_collapsed;
 }
 
 
 void adventure(void) {
-	printf("\n=== ПРИКЛЮЧЕНИЕ ===\n");
+	printf("\n=== БАШНЯ ===\n");
 
-	int height = MIN_MAP_SIZE +
-		rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
-
-	int width = MIN_MAP_SIZE +
-		rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
-
-	char** map = allocate_map(height, width);
-
-	if (map == NULL) {
-		printf("Ошибка: не удалось выделить память для карты!\n");
-		return;
-	}
-
-	generate_map(map, height, width);
-
+	int depth = 1;
+	int height;
+	int width;
 	int player_y = 1;
 	int player_x = 1;
-
-	map[player_y][player_x] = 'D';
-
-	place_stairs(map, height, width);
-
-	printf("\nРазмер карты: %d x %d\n", height, width);
-
-	print_map(map, height, width, player_y, player_x);
-
 	int key;
 
+	char** map = NULL;
+
 	while (1) {
-		printf("\nУправление: W A S D (или Ц Ф Ы В) | Q - домой\n");
 
-		key = _getwch();
+		height = MIN_MAP_SIZE +
+			rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
 
-		if (key == 'q' || key == 'Q' ||
-			key == L'й' || key == L'Й') {
+		width = MIN_MAP_SIZE +
+			rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
+
+		map = allocate_map(height, width);
+
+		if (map == NULL) {
+			printf("Ошибка выделения памяти!\n");
+			return;
+		}
+
+		int map_created = 0;
+		int stair_y = -1;
+		int stair_x = -1;
+
+		for (int attempt = 0; attempt < 100; attempt++) {
+
+			generate_map(map, height, width);
+
+			player_y = 1;
+			player_x = 1;
+
+			map[player_y][player_x] = 'D';
+
+			if (!place_stairs_up(map, height, width,
+				&stair_y, &stair_x)) {
+				continue;
+			}
+
+			if (possible_path(map, height, width,
+				player_y, player_x, stair_y, stair_x)) {
+				map_created = 1;
+				break;
+			}
+		}
+
+		if (!map_created) {
+			printf("Не удалось создать проходимый этаж!\n");
+			free_map(map, height);
+			return;
+		}
+
+		printf("\nЭтаж: %d\n", depth);
+		printf("Размер карты: %d x %d\n", height, width);
+
+		print_map(map, height, width, player_y, player_x);
+
+		int next_floor = 0;
+		int moves = 0;
+		int collapsed_layers = 0;
+		int emergency_evacuation = 0;
+
+		while (1) {
+
+			if (emergency_evacuation) {
+				printf("\nЛестница U провалилась! Срочно эвакуируйтесь: Q!\n");
+			}
+			else {
+				printf("\nW A S D | Q - домой\n");
+			}
+
+			key = _getwch();
+
+			if (key == 'q' || key == 'Q' ||
+				key == L'й' || key == L'Й') {
+
+				if (map[player_y][player_x] == 'D' ||
+					emergency_evacuation) {
+
+					free_map(map, height);
+					printf("\nВы вернулись домой!\n");
+					return;
+				}
+
+				printf("Чтобы вернуться домой, найдите D!\n");
+				continue;
+			}
+
+			if (emergency_evacuation) {
+				printf("Лестница вверх разрушена! Нажмите Q для эвакуации!\n");
+				continue;
+			}
+
+			if (!control_player(map, height, width,
+				&player_y, &player_x, key)) {
+				printf("Нельзя пройти в этом направлении!\n");
+				continue;
+			}
+
+			moves++;
 
 			if (map[player_y][player_x] == 'U') {
+				next_floor = 1;
 				break;
 			}
 
-			printf("\nЧтобы вернуться домой, нужно найти лестницу U!\n");
-			continue;
+			if (moves % 5 == 0) {
+
+				int stair_collapsed = collapse_floor(
+					map, height, width,
+					collapsed_layers,
+					player_y, player_x
+				);
+
+				collapsed_layers++;
+
+				if (stair_collapsed) {
+					emergency_evacuation = 1;
+				}
+			}
+
+			print_map(map, height, width, player_y, player_x);
 		}
 
-			
-
-
-		if (!control_player(map, height, width,
-			&player_y, &player_x, key)) {
-			printf("\nНельзя пройти в этом направлении!\n");
+		if (next_floor) {
+			free_map(map, height);
+			map = NULL;
+			depth++;
 		}
-
-		print_map(map, height, width, player_y, player_x);
 	}
-
-	free_map(map, height);
-
-	printf("\nВы вернулись обратно.\n");
 }
+
+
+	
 
 	
 int main()
