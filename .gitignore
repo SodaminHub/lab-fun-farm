@@ -427,3 +427,11 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Local Visual Studio project files
+*.vcxproj
+*.vcxproj.filters
+*.sln
+
+# Executable files
+*.exe
