@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 
 #include <stdio.h>
 #include <string.h>
@@ -18,7 +19,7 @@
 #define ID_SHOVEL 6
 #define ID_IRON 7
 #define ID_ROPE 8
-#define ID_COIN 9
+#define ID_CHAINSAW 9
 
 #define MAX_ITEMS 10
 #define MAX_NAME_LEN 32
@@ -62,7 +63,7 @@ void load_item_catalog(char catalog[MAX_ITEMS][MAX_NAME_LEN]) { // Считыв�
 		strcpy(catalog[ID_SHOVEL], "Лопата");
 		strcpy(catalog[ID_IRON], "Железо");
 		strcpy(catalog[ID_ROPE], "Веревка");
-		strcpy(catalog[ID_COIN], "Монета");
+		strcpy(catalog[ID_CHAINSAW], "Бензопила");
 	}
 }
 
@@ -146,28 +147,28 @@ void free_map(char** map, int height) {
 	if (map == NULL) {
 		return;
 	}
-	for (int i = 0; i < height; i++) {
+	for (int i = 0; i < height; i++) // для каждой строки в рамках условия освобождаю память каждой конкретной строки
 		free(map[i]);
 	}
 
-	free(map);
+	free(map); // освобождаю память массива указателей
 }
 
 char** allocate_map(int height, int width) {
-	char** map = malloc(height * sizeof(char*));
+	char** map = malloc(height * sizeof(char*)); // выделяю память под указатели
 
 	if (map == NULL) {
 		return NULL;
 	}
 
-	for (int i = 0; i < height; i++) {
+	for (int i = 0; i < height; i++) { // записываю нули чтобы каждый указатель был изначально пустым
 		map[i] = NULL;
 	}
 
 	for (int i = 0; i < height; i++) {
-		map[i] = malloc(width * sizeof(char));
+		map[i] = malloc(width * sizeof(char)); // выделяю память под сами строки
 
-		if (map[i] == NULL) {
+		if (map[i] == NULL) { // если не получилось выделить память у какой нибудь строке
 			free_map(map, height);
 			return NULL;
 		}
@@ -177,21 +178,21 @@ char** allocate_map(int height, int width) {
 }
 
 void generate_map(char** map, int height, int width) {
-	int obstacle_percent = MIN_OBSTACLE_PERCENT + rand() % (MAX_OBSTACLE_PERCENT - MIN_OBSTACLE_PERCENT + 1);
+	int obstacle_percent = MIN_OBSTACLE_PERCENT + rand() % (MAX_OBSTACLE_PERCENT - MIN_OBSTACLE_PERCENT + 1); // выбираю процент препятствий
 
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
-			if (i == 0 || i == height - 1 || j == 0 || j == width - 1) {
-				map[i][j] = '#';
+	for (int i = 0; i < height; i++) { // перебираю строки
+		for (int j = 0; j < width; j++) { // перебираю столбцы
+			if (i == 0 || i == height - 1 || j == 0 || j == width - 1) { 
+				map[i][j] = '#'; // стенки
 			}
 			else {
 				int chance = rand() % 100;
 
 				if (chance < obstacle_percent) {
-					map[i][j] = (rand() % 2 == 0) ? 'T' : 'R';
+					map[i][j] = (rand() % 2 == 0) ? 'T' : 'R';  // препятствия
 				}
 				else {
-					map[i][j] = '.';
+					map[i][j] = '.'; // свободные для ходьбы поля
 				}
 			}
 		}
@@ -204,11 +205,11 @@ void print_map(char** map, int height, int width,
 	for (int i = 0; i < height; i++) {
 		for (int j = 0; j < width; j++) {
 
-			if (i == player_y && j == player_x) {
-				printf("@ ");
+			if (i == player_y && j == player_x) { 
+				printf("@ "); // игрок
 			}
 			else {
-				printf("%c ", map[i][j]);
+				printf("%c ", map[i][j]); // вывожу любой другой символ
 			}
 		}
 		printf("\n");
@@ -291,7 +292,7 @@ int place_stairs(char** map, int height, int width, char stair,
 		return 0;
 	}
 
-	int target = rand() % free_cells;
+	int target = rand() % free_cells; // случайный номер клетки
 
 	for (int i = 1; i < height - 1; i++) {
 		for (int j = 1; j < width - 1; j++) {
@@ -351,8 +352,6 @@ int place_stairs_up(char** map, int height, int width,
 
 	return 0;
 }
-
-
 
 
 int possible_path(char** map, int height, int width,
@@ -426,26 +425,24 @@ int collapse_floor(char** map, int height, int width,
 
 	int stair_collapsed = 0;
 
-	if (top > bottom || left > right) {
+	if (top > bottom || left > right) { // а существует ли слой? Если выполняется условие то уже нет
 		return 0;
 	}
 
-	for (int i = top; i <= bottom; i++) {
+	for (int i = top; i <= bottom; i++) { // перебираю клетки для подходящего слоя
 		for (int j = left; j <= right; j++) {
 
-			if (i != top && i != bottom &&
+			if (i != top && i != bottom && // не выбираем края а выбираем всю остальную доступную часть
 				j != left && j != right) {
 				continue;
 			}
 
-			// Не обрушиваем клетку, на которой стоит герой
-			if (i == player_y && j == player_x) {
+			if (i == player_y && j == player_x) { // защита клетки игрока
 				continue;
 			}
 
-			// Проверяем, не провалилась ли лестница вверх
 			if (map[i][j] == 'U') {
-				stair_collapsed = 1;
+				stair_collapsed = 1; // а вот и обрушение
 			}
 
 			map[i][j] = ' ';
@@ -685,10 +682,10 @@ int main()
 				break;
 			}
 
-			printf("Введите ID предмета (%d-%d): ", ID_EMPTY, ID_COIN);
+			printf("Введите ID предмета (%d-%d): ", ID_EMPTY, ID_CHAINSAW);
 			if (!safe_scan(&item_id)) break;
 
-			if (item_id < ID_EMPTY || item_id > ID_COIN) { // Нельзя ввести ID предмета ниже значения 0 и 9, упираемся на то что ID предметов расположены от 0 до 9
+			if (item_id < ID_EMPTY || item_id > ID_CHAINSAW) { // Нельзя ввести ID предмета ниже значения 0 и 9, упираемся на то что ID предметов расположены от 0 до 9
 				printf("Ошибка: Такого предмета не существует!\n");
 				break;
 			}
