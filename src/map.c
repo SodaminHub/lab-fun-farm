@@ -43,6 +43,7 @@ Map* create_map(int width, int height) {
     map->width = width;
     map->height = height;
     map->floor = 1;
+    map->collapsed_layers = 0;
 
     return map;
 }
@@ -358,12 +359,14 @@ int possible_path(const Map* map, int start_y, int start_x,
     return result;
 }
 
-int collapse_floor(Map* map, int player_y, int player_x) {
-    if (map == NULL || map->cells == NULL) {
+int collapse_floor(Map* map, int player_y, int player_x)
+{
+    if (map == NULL || map->cells == NULL)
+    {
         return 0;
     }
 
-    int layer = map->floor - 1;
+    int layer = map->collapsed_layers;
 
     int top = 1 + layer;
     int bottom = map->height - 2 - layer;
@@ -372,29 +375,36 @@ int collapse_floor(Map* map, int player_y, int player_x) {
 
     int stair_collapsed = 0;
 
-    if (top > bottom || left > right) {
+    if (top > bottom || left > right)
+    {
         return 0;
     }
 
-    for (int i = top; i <= bottom; i++) {
-        for (int j = left; j <= right; j++) {
-
+    for (int i = top; i <= bottom; i++)
+    {
+        for (int j = left; j <= right; j++)
+        {
             if (i != top && i != bottom &&
-                j != left && j != right) {
+                j != left && j != right)
+            {
                 continue;
             }
 
-            if (i == player_y && j == player_x) {
+            if (i == player_y && j == player_x)
+            {
                 continue;
             }
 
-            if (map->cells[i][j] == 'U') {
+            if (map->cells[i][j] == 'U')
+            {
                 stair_collapsed = 1;
             }
 
             map->cells[i][j] = ' ';
         }
     }
+
+    map->collapsed_layers++;
 
     return stair_collapsed;
 }

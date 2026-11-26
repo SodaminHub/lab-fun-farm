@@ -16,7 +16,11 @@
 #define ID_SHOVEL 6
 #define ID_IRON 7
 #define ID_ROPE 8
-#define ID_COIN 9
+#define ID_CHAINSAW 9
+
+#define BASE_HEALTH 100
+#define BASE_STAMINA 50
+#define BASE_GOLD 100
 
 typedef struct Player {
     char name[MAX_NAME_LEN];

@@ -6,29 +6,13 @@
 #include <time.h>
 #include <windows.h>
 #include <conio.h>
+#include "player.h"
+#include "map.h"
+#include "utils.h"
+#include "adventure.h"
 
-#define INVENTORY_SIZE 10
 #define DAY_HOURS 24
 
-#define ID_EMPTY 0  // Задаю уникальные номера для предметов
-#define ID_WOOD 1
-#define ID_STONE 2
-#define ID_SEEDS 3
-#define ID_HOE 4
-#define ID_APPLE 5
-#define ID_SHOVEL 6
-#define ID_IRON 7
-#define ID_ROPE 8
-#define ID_CHAINSAW 9
-
-#define MAX_ITEMS 10
-#define MAX_NAME_LEN 32
-
-#define MIN_MAP_SIZE 5
-#define MAX_MAP_SIZE 30
-
-#define MIN_OBSTACLE_PERCENT 15
-#define MAX_OBSTACLE_PERCENT 30
 
 int safe_scan(int* value) { // Проверяю на введение числа, в противном случае возвращаю ошибку и обратно к введению значения.
 	if (scanf("%d", value) != 1) {
@@ -95,53 +79,6 @@ int save_to_diary(const char* name, int day, int hour, const int* inv, const cha
 	return 1;
 }
 
-int value_inventory(const int* inv, const char catalog[MAX_ITEMS][MAX_NAME_LEN]) {
-	FILE* f_out = fopen("output.txt", "w");
-	if (f_out == NULL) return 0;
-
-	int total_sum = 0;
-	int max_price = -1;
-	char most_expensive_item[MAX_NAME_LEN] = "Нет предметов";
-
-	fprintf(f_out, "=== ОЦЕНКА СТОИМОСТИ ПРЕДМЕТОВ РЮКЗАКА ===\n");
-
-	for (int i = 0; i < INVENTORY_SIZE; i++) {
-		int current_id = inv[i];
-		int item_price = 0;
-
-		if (current_id != ID_EMPTY) { // Если слот всёж не пустой, ищу его цену в прайс-листе торговца
-			FILE* f_in = fopen("input.txt", "r");
-			if (f_in != NULL) {
-				char p_name[MAX_NAME_LEN];
-				int p_price;
-
-				while (fscanf(f_in, "%31s %d", p_name, &p_price) == 2) { 	// Печатаю цены у торговца
-					if (strcmp(p_name, catalog[current_id]) == 0) {
-						item_price = p_price;
-						break;
-					}
-				}
-				fclose(f_in);
-			}
-		}
-
-		fprintf(f_out, "Слот %d: %s - %d монет\n", i, catalog[current_id], item_price); // Записываю стоимость конкретного слота
-		total_sum += item_price;
-
-		if (current_id != ID_EMPTY && item_price > max_price) { // Ищу самый дорогой предмет
-			max_price = item_price;
-			strcpy(most_expensive_item, catalog[current_id]);
-		}
-	}
-
-	fprintf(f_out, "-----------------------------------\n");
-	fprintf(f_out, "Самый дорогой предмет: %s (%d монет)\n", most_expensive_item, max_price > -1 ? max_price : 0);
-	fprintf(f_out, "Общая стоимость инвентаря: %d монет\n", total_sum);
-	fprintf(f_out, "===================================\n");
-
-	fclose(f_out);
-	return 1;
-}
 
 void free_map(char** map, int height) {
 	if (map == NULL) {
@@ -603,21 +540,21 @@ int main()
 	srand((unsigned int)time(NULL));
 	int current_day = 1;
 	int current_hour = 8;
+	Player* player = NULL;
 	int userAction;
-	int inventory[INVENTORY_SIZE] = { 6, 4, 0, 0, 3, 1, 1, 8, 2, 9 };
 
-	char farmer_name[32] = { 0 };
-	printf("Добро пожаловать! Введите имя вашего фермера: ");
-	if (scanf("%31s", farmer_name) != 1) {
-		strcpy(farmer_name, "Безымянный");
+	printf("Добро пожаловать!\n");
+	player = create_player();
+
+	if (player == NULL) {
+		return 1;
 	}
-	while (getchar() != '\n');
 
 	char item_names[MAX_ITEMS][MAX_NAME_LEN];
-	load_item_catalog(item_names);
+	load_item_catalog(item_names, "items.txt");
 
 	while (1) {
-		printf("\n=== ПЕРВЫЕ ШАГИ ВЕСЁЛОГО ФЕРМЕРА. Здарова, %s ===\n", farmer_name);
+		printf("\n=== ПЕРВЫЕ ШАГИ ВЕСЁЛОГО ФЕРМЕРА. Здарова, %s ===\n", player->name);
 		printf(" 0. Выйти из игры\n");
 		printf(" 1. Посмотреть на часы\n");
 		printf(" 2. Поработать на ферме\n");
@@ -631,12 +568,13 @@ int main()
 		printf("10. Отправиться в приключение\n");
 		printf("Выберите действие: ");
 
-		if (!safe_scan(&userAction)) { // Главное меню защищено от ввода букв
+		if (!safe_scan("%d", &userAction)) { // Главное меню защищено от ввода букв
 			continue;
 		}
 		switch (userAction) {
 		case 0:
-			printf("Выход из игры. Возвращайтесь ещё!");
+			printf("Выход из игры. Возвращайтесь ещё!\n");
+			free_player(&player);
 			return 0;
 
 		case 1:
@@ -647,7 +585,7 @@ int main()
 			int work_hours;
 			printf("Сколько часов вы хотите потратить на работу? ");
 
-			if (!safe_scan(&work_hours)) break; // Безопасно считываю количество рабочих часов, при ошибке возвращаюсь обратно
+			if (!safe_scan("%d", &work_hours)) break; // Безопасно считываю количество рабочих часов, при ошибке возвращаюсь обратно
 			if (work_hours <= 0) {
 				printf("Ошибка: Нельзя работать 0 или меньше часов. Введите заново число.\n");
 				break;
@@ -665,8 +603,10 @@ int main()
 
 		case 3:
 			printf("\n--- СОДЕРЖИМОЕ ИНВЕНТАРЯ ---\n");
-			for (int i = 0; i < INVENTORY_SIZE; i++) { // УБИЛ и УНИЧТОЖИЛ этот ваш СВИЧ и теперь оно просто подставляет название вещи из item_names по его ID
-				printf("Слот %d: [%d] - %s\n", i, inventory[i], item_names[inventory[i]]);
+			for (int i = 0; i < INVENTORY_SIZE; i++) {
+				printf("Слот %d: [%d] - %s\n",
+					i, player->inventory[i],
+					item_names[player->inventory[i]]);
 			}
 			break;
 
@@ -675,7 +615,7 @@ int main()
 			int item_id;
 
 			printf("Выберите слот инвентаря (0-%d): ", INVENTORY_SIZE - 1);
-			if (!safe_scan(&slot)) break;
+			if (!safe_scan("%d", &slot)) break;
 
 			if (slot < 0 || slot >= INVENTORY_SIZE) { // Индекс слота не может быть ниже нуля или переходить дальше размера инвентаря
 				printf("Ошибка: Неверный индекс слота!\n");
@@ -683,14 +623,14 @@ int main()
 			}
 
 			printf("Введите ID предмета (%d-%d): ", ID_EMPTY, ID_CHAINSAW);
-			if (!safe_scan(&item_id)) break;
+			if (!safe_scan("%d", &item_id)) break;
 
 			if (item_id < ID_EMPTY || item_id > ID_CHAINSAW) { // Нельзя ввести ID предмета ниже значения 0 и 9, упираемся на то что ID предметов расположены от 0 до 9
 				printf("Ошибка: Такого предмета не существует!\n");
 				break;
 			}
 
-			inventory[slot] = item_id;
+			player->inventory[slot] = item_id;
 			printf("Предмет с ID %d успешно положен в слот %d.\n", item_id, slot);
 			break;
 		}
@@ -698,14 +638,14 @@ int main()
 		case 5: {
 			int slot;
 			printf("Какой предмет выбросить? (0-%d): ", INVENTORY_SIZE - 1);
-			if (!safe_scan(&slot)) break;
+			if (!safe_scan("%d", &slot)) break;
 
 			if (slot < 0 || slot >= INVENTORY_SIZE) {
 				printf("Ошибка: Неверный индекс слота!\n");
 				break;
 			}
 
-			inventory[slot] = ID_EMPTY; // Записываю в ячейку значение ID_EMPTY, т.е. 0 и избавляемся так от предмета.
+			player->inventory[slot] = ID_EMPTY; // Записываю в ячейку значение ID_EMPTY, т.е. 0 и избавляемся так от предмета.
 			printf("Предмет %d выброшен.\n", slot);
 			break;
 		}
@@ -716,14 +656,14 @@ int main()
 			int found = 0; // Переменная, нужная чтобы зафиксировать соседние слоты
 
 			printf("Введите ID первого предмета. ");
-			if (!safe_scan(&item_a)) break;
+			if (!safe_scan("%d", &item_a)) break;
 
 			printf("Введите ID второго предмета. ");
-			if (!safe_scan(&item_b)) break;
+			if (!safe_scan("%d", &item_b)) break;
 
 			for (int i = 0; i < INVENTORY_SIZE - 1; i++) {
-				if ((inventory[i] == item_a && inventory[i + 1] == item_b) || // Проверяем два варианта расположения вещей
-					(inventory[i] == item_b && inventory[i + 1] == item_a)) {
+				if ((player->inventory[i] == item_a && player->inventory[i + 1] == item_b) || // Проверяем два варианта расположения вещей
+					(player->inventory[i] == item_b && player->inventory[i + 1] == item_a)) {
 					printf("Предметы лежат в слотах %d и %d.\n", i, i + 1);
 					found = 1;
 				}
@@ -736,10 +676,10 @@ int main()
 		case 7: {
 			char search_name[MAX_NAME_LEN];
 			printf("Введите название предмета для поиска: ");
-			if (scanf("%31s", search_name) != 1) break;
+			if (!safe_scan("%31s", search_name)) break;
 			while (getchar() != '\n');
 
-			int target_id = find_item_id(item_names, search_name);
+			int target_id = find_item_id(search_name);
 
 			if (target_id == -1) {
 				printf("Предмета с названием \"%s\" нет в каталоге игры.\n", search_name);
@@ -749,7 +689,7 @@ int main()
 			int found_slots = 0;
 			printf("Результаты поиска для \"%s\" (ID %d):\n", search_name, target_id);
 			for (int i = 0; i < INVENTORY_SIZE; i++) {
-				if (inventory[i] == target_id) {
+				if (player->inventory[i] == target_id) {
 					printf("-> Найдено в слоте %d\n", i);
 					found_slots++;
 				}
@@ -763,25 +703,23 @@ int main()
 
 		case 8: {
 			printf("\n--- СВОДКА ДЛЯ ДНЕВНИКА ---\n");
-			printf("Фермер: %s\n", farmer_name);
+			printf("Фермер: %s\n", player->name);
 			printf("Время: %d день, %d час\n", current_day, current_hour);
 			printf("Содержимое рюкзака:\n");
-			for (int i = 0; i < INVENTORY_SIZE; i++) {
-				printf("  Слот %d: %s\n", i, item_names[inventory[i]]);
-			}
-			printf("---------------------------\n");
 
-			if (save_to_diary(farmer_name, current_day, current_hour, inventory, item_names)) {
-				printf("Запись успешно добавлена в дневник (diary.txt)!\n");
+			for (int i = 0; i < INVENTORY_SIZE; i++) {
+				printf("  Слот %d: %s\n",
+					i, item_names[player->inventory[i]]);
 			}
-			else {
-				printf("Не удалось открыть или записать в дневник!\n");
-			}
+
+			printf("---------------------------\n");
+			save_to_diary("Состояние фермера сохранено.");
+			printf("Запись добавлена в дневник!\n");
+
 			break;
 		}
-
 		case 9: {
-			if (value_inventory(inventory, item_names)) {
+			if (value_inventory(player->inventory, item_names)) {
 				printf("\nВедомость успешно сохранена в файл output.txt!\n");
 
 				FILE* f_out_read = fopen("output.txt", "r");
@@ -802,7 +740,7 @@ int main()
 		}
 
 		case 10:
-			adventure();
+			adventure(player, &current_day, &current_hour);
 			break;
 
 		default:

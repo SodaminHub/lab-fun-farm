@@ -14,6 +14,7 @@ typedef struct Map {
     int width;
     int height;
     int floor;
+    int collapsed_layers;
 } Map;
 
 typedef enum Direction {
@@ -33,6 +34,5 @@ int place_stairs_up(Map* map, int* stair_y, int* stair_x);
 int possible_path(const Map* map, int start_y, int start_x,
     int target_y, int target_x);
 int collapse_floor(Map* map, int player_y, int player_x);
-int adventure(Player* player, int* current_day, int* current_hour);
 
 #endif
