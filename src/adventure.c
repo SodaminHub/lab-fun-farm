@@ -172,15 +172,17 @@ void adventure(Player* player, int* current_day, int* current_hour)
 
             if (player->stamina == 0)
             {
-                player->gold /= 2;
+                if (!emergency_evacuation)
+                {
+                    player->gold /= 2;
+                    printf("Потеряна половина золота.\n");
+                }
 
                 printf("\nВы выбились из сил! Необходима эвакуация!\n");
-                printf("Потеряна половина золота.\n");
 
                 free_map(&map);
                 return;
             }
-
             if (!emergency_evacuation &&
                 map->cells[player_y][player_x] == 'U')
             {
@@ -211,28 +213,26 @@ void adventure(Player* player, int* current_day, int* current_hour)
                 *current_hour = 0;
             }
 
+            int evacuation_needed = 0;
+
             if (*current_hour >= 2 && *current_hour < 8)
             {
-                player->gold /= 2;
-
                 printf("\nНаступило время эвакуации!\n");
-                printf("Потеряна половина золота.\n");
-
-                free_map(&map);
-                return;
+                evacuation_needed = 1;
             }
 
             if (player->stamina <= 0)
             {
                 player->stamina = 0;
+                printf("\nВы выбились из сил!\n");
+                evacuation_needed = 1;
+            }
 
-                if (!emergency_evacuation)
-                {
-                    player->gold /= 2;
-                    printf("Потеряна половина золота.\n");
-                }
-
-                printf("\nВы выбились из сил! Необходима эвакуация!\n");
+            if (evacuation_needed)
+            {
+                player->gold /= 2;
+                printf("Потеряна половина золота.\n");
+                printf("Необходима эвакуация!\n");
 
                 free_map(&map);
                 return;

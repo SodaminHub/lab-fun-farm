@@ -42,7 +42,7 @@ int main()
 		printf(" 0. Выйти из игры\n");
 		printf(" 1. Создать / пересоздать персонажа\n");
 		printf(" 2. Карточка персонажа\n");
-		printf(" 3. Посмотреть на часы\n");
+		printf(" 3. Управление временем и режим дня\n");
 		printf(" 4. Поработать на ферме\n");
 		printf(" 5. Проверить инвентарь\n");
 		printf(" 6. Положить предмет в инвентарь\n");
@@ -97,11 +97,7 @@ int main()
 		}
 
 		case 2:
-			if (player == NULL) {
-				printf("Сначала создайте персонажа (пункт 1)!\n");
-				break;
-			}
-
+		
 			show_player(player);
 
 			printf("Дата: %d день\n", current_day);
@@ -120,9 +116,92 @@ int main()
 			}
 			break;
 
-		case 3:
-			printf("Текущее время : %d день %d час\n", current_day, current_hour);
+		case 3: {
+			int time_action;
+
+			printf("\n===== РЕЖИМ ДНЯ =====\n");
+			printf("1. Посмотреть на часы\n");
+			printf("2. Пропустить время (Ждать)\n");
+			printf("3. Отдых (Лечь спать)\n");
+			printf("0. Назад\n");
+			printf("Ваш выбор: ");
+
+			if (!safe_scan("%d", &time_action)) break;
+
+			switch (time_action) {
+			case 1:
+				printf("Текущее время: %d день, %02d:00\n",
+					current_day, current_hour);
+				break;
+
+			case 2: {
+				int wait_hours;
+
+				printf("На сколько часов хотите подождать? ");
+				if (!safe_scan("%d", &wait_hours)) break;
+
+				if (wait_hours <= 0) {
+					printf("Нужно подождать хотя бы 1 час!\n");
+					break;
+				}
+
+				if (current_hour >= 2 && current_hour < 8) {
+					printf("Сейчас время отдыха. Лучше поспать!\n");
+					break;
+				}
+
+				int hours_until_night;
+
+				if (current_hour == 2) {
+					hours_until_night = 0;
+				}
+				else if (current_hour < 2) {
+					hours_until_night = 2 - current_hour;
+				}
+				else {
+					hours_until_night = 24 - current_hour + 2;
+				}
+
+				if (wait_hours > hours_until_night) {
+					printf("Нельзя ждать дальше ближайших 02:00!\n");
+					break;
+				}
+
+				current_hour += wait_hours;
+
+				if (current_hour >= DAY_HOURS) {
+					current_day += current_hour / DAY_HOURS;
+					current_hour %= DAY_HOURS;
+				}
+
+				printf("Вы подождали %d ч. Теперь: %d день, %02d:00\n",
+					wait_hours, current_day, current_hour);
+
+				break;
+			}
+
+			case 3:
+				current_day++;
+				current_hour = 8;
+
+				player->hp = player->max_hp;
+				player->stamina = player->max_stamina;
+
+				printf("\nВы хорошо отдохнули!\n");
+				printf("Наступил новый день: %d, 08:00\n", current_day);
+				printf("Здоровье и выносливость полностью восстановлены!\n");
+				break;
+
+			case 0:
+				break;
+
+			default:
+				printf("Неверный пункт меню!\n");
+				break;
+			}
+
 			break;
+		}
 
 		case 4: {
 			int work_hours;
@@ -131,6 +210,20 @@ int main()
 			if (!safe_scan("%d", &work_hours)) break; // Безопасно считываю количество рабочих часов, при ошибке возвращаюсь обратно
 			if (work_hours <= 0) {
 				printf("Ошибка: Нельзя работать 0 или меньше часов. Введите заново число.\n");
+				break;
+			}
+
+			if (current_hour >= 2 && current_hour < 8) {
+				printf("Сейчас время отдыха. Сначала необходимо поспать!\n");
+				break;
+			}
+
+			int hours_until_2am = (current_hour < 2)
+				? 2 - current_hour
+				: 26 - current_hour;
+
+			if (work_hours >= hours_until_2am) {
+				printf("Нельзя работать до 02:00 или позже. Уменьшите количество часов.\n");
 				break;
 			}
 
@@ -210,6 +303,12 @@ int main()
 			printf("Введите ID второго предмета. ");
 			if (!safe_scan("%d", &item_b)) break;
 
+			if (item_a < ID_EMPTY || item_a > ID_CHAINSAW ||
+				item_b < ID_EMPTY || item_b > ID_CHAINSAW) {
+				printf("Ошибка: Некорректный ID предмета!\n");
+				break;
+			}
+
 			for (int i = 0; i < INVENTORY_SIZE - 1; i++) {
 				if ((player->inventory[i] == item_a && player->inventory[i + 1] == item_b) || // Проверяем два варианта расположения вещей
 					(player->inventory[i] == item_b && player->inventory[i + 1] == item_a)) {
@@ -222,11 +321,14 @@ int main()
 			}
 			break;
 		}
+
 		case 9: {
 			char search_name[MAX_NAME_LEN];
 			printf("Введите название предмета для поиска: ");
 			if (!safe_scan("%31s", search_name)) break;
-			while (getchar() != '\n');
+			int ch;
+			while ((ch = getchar()) != '\n' && ch != EOF) {
+			}
 
 			int target_id = find_item_id(item_names, search_name);
 
@@ -278,6 +380,7 @@ int main()
 
 			break;
 		}
+
 		case 11: {
 			if (value_inventory(player->inventory, item_names)) {
 				printf("\nВедомость успешно сохранена в файл output.txt!\n");
@@ -291,6 +394,9 @@ int main()
 					}
 					printf("-----------------------------------\n");
 					fclose(f_out_read);
+				}
+				else {
+					printf("Не удалось открыть output.txt для чтения!\n");
 				}
 			}
 			else {
