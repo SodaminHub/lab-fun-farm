@@ -108,8 +108,8 @@ void print_map(const Map* map, int player_y, int player_x) {
         printf("\n");
     }
 }
-
-int control_player(Map* map, int* player_y, int* player_x, int key) {
+int control_player(Map* map, int* player_y, int* player_x, int key)
+{
     if (map == NULL || map->cells == NULL ||
         player_y == NULL || player_x == NULL) {
         return 0;
@@ -121,29 +121,29 @@ int control_player(Map* map, int* player_y, int* player_x, int key) {
     switch (key) {
     case 'w':
     case 'W':
-    case L'ц':
-    case L'Ц':
+    case 0x0446: // ц
+    case 0x0426: // Ц
         new_y--;
         break;
 
     case 's':
     case 'S':
-    case L'ы':
-    case L'Ы':
+    case 0x044B: // ы
+    case 0x042B: // Ы
         new_y++;
         break;
 
     case 'a':
     case 'A':
-    case L'ф':
-    case L'Ф':
+    case 0x0444: // ф
+    case 0x0424: // Ф
         new_x--;
         break;
 
     case 'd':
     case 'D':
-    case L'в':
-    case L'В':
+    case 0x0432: // в
+    case 0x0412: // В
         new_x++;
         break;
 
@@ -168,7 +168,6 @@ int control_player(Map* map, int* player_y, int* player_x, int key) {
 
     return 1;
 }
-
 int place_stairs(Map* map, char stair, int excluded_y, int excluded_x) {
     if (map == NULL || map->cells == NULL) {
         return 0;

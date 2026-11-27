@@ -26,62 +26,20 @@ int safe_scan(const char* format, void* value)
     return 1;
 }
 
-void save_to_diary(const char* message)
+
+int find_item_id(const char catalog[MAX_ITEMS][MAX_NAME_LEN], const char* name)
 {
-    if (message == NULL)
-    {
-        return;
+    if (catalog == NULL || name == NULL) {
+        return -1;
     }
 
-    FILE* file = fopen("diary.txt", "a");
-
-    if (file == NULL)
-    {
-        printf("Не удалось открыть дневник!\n");
-        return;
-    }
-
-    fprintf(file, "%s\n", message);
-
-    fclose(file);
-}
-
-int find_item_id(const char* name)
-{
-    if (name == NULL)
-    {
-        return ID_EMPTY;
-    }
-
-    FILE* file = fopen("items.txt", "r");
-
-    if (file == NULL)
-    {
-        printf("Не удалось открыть items.txt!\n");
-        return ID_EMPTY;
-    }
-
-    int id;
-    char item_name[100];
-
-    while (fscanf(file, "%d ", &id) == 1)
-    {
-        if (fgets(item_name, sizeof(item_name), file) == NULL)
-        {
-            break;
-        }
-
-        item_name[strcspn(item_name, "\r\n")] = '\0';
-
-        if (strcmp(item_name, name) == 0)
-        {
-            fclose(file);
-            return id;
+    for (int i = 0; i < MAX_ITEMS; i++) {
+        if (strcmp(catalog[i], name) == 0) {
+            return i;
         }
     }
 
-    fclose(file);
-    return ID_EMPTY;
+    return -1;
 }
 
 void load_item_catalog(char catalog[MAX_ITEMS][MAX_NAME_LEN], const char* filename)
@@ -98,11 +56,12 @@ void load_item_catalog(char catalog[MAX_ITEMS][MAX_NAME_LEN], const char* filena
         int temp_id;
         char temp_name[MAX_NAME_LEN];
 
-        while (fscanf(file, "%d %31s", &temp_id, temp_name) == 2)
+        while (fscanf_s(file, "%d %31s",
+            &temp_id, temp_name, (unsigned)_countof(temp_name)) == 2)
         {
             if (temp_id >= 0 && temp_id < MAX_ITEMS)
             {
-                strcpy(catalog[temp_id], temp_name);
+                strcpy_s(catalog[temp_id], MAX_NAME_LEN, temp_name);
             }
         }
 
@@ -112,22 +71,28 @@ void load_item_catalog(char catalog[MAX_ITEMS][MAX_NAME_LEN], const char* filena
     {
         printf("Предупреждение: файл %s не найден! Загружены стандартные названия.\n", filename);
 
-        strcpy(catalog[ID_EMPTY], "Пусто");
-        strcpy(catalog[ID_WOOD], "Древесина");
-        strcpy(catalog[ID_STONE], "Камень");
-        strcpy(catalog[ID_SEEDS], "Семена");
-        strcpy(catalog[ID_HOE], "Тяпка");
-        strcpy(catalog[ID_APPLE], "Яблоко");
-        strcpy(catalog[ID_SHOVEL], "Лопата");
-        strcpy(catalog[ID_IRON], "Железо");
-        strcpy(catalog[ID_ROPE], "Верёвка");
-        strcpy(catalog[ID_CHAINSAW], "Бензопила");
+        strcpy_s(catalog[ID_EMPTY], MAX_NAME_LEN, "Пусто");
+        strcpy_s(catalog[ID_WOOD], MAX_NAME_LEN, "Древесина");
+        strcpy_s(catalog[ID_STONE], MAX_NAME_LEN, "Камень");
+        strcpy_s(catalog[ID_SEEDS], MAX_NAME_LEN, "Семена");
+        strcpy_s(catalog[ID_HOE], MAX_NAME_LEN, "Тяпка");
+        strcpy_s(catalog[ID_APPLE], MAX_NAME_LEN, "Яблоко");
+        strcpy_s(catalog[ID_SHOVEL], MAX_NAME_LEN, "Лопата");
+        strcpy_s(catalog[ID_IRON], MAX_NAME_LEN, "Железо");
+        strcpy_s(catalog[ID_ROPE], MAX_NAME_LEN, "Верёвка");
+        strcpy_s(catalog[ID_CHAINSAW], MAX_NAME_LEN, "Бензопила");
     }
 }
+int value_inventory(const int* inv, const char catalog[MAX_ITEMS][MAX_NAME_LEN])
+{
+    if (inv == NULL || catalog == NULL) {
+        return 0;
+    }
 
-int value_inventory(const int* inv, const char catalog[MAX_ITEMS][MAX_NAME_LEN]) {
     FILE* f_out = fopen("output.txt", "w");
-    if (f_out == NULL) return 0;
+    if (f_out == NULL) {
+        return 0;
+    }
 
     int total_sum = 0;
     int max_price = -1;
@@ -137,38 +102,92 @@ int value_inventory(const int* inv, const char catalog[MAX_ITEMS][MAX_NAME_LEN])
 
     for (int i = 0; i < INVENTORY_SIZE; i++) {
         int current_id = inv[i];
+
+        if (current_id < 0 || current_id >= MAX_ITEMS) {
+            fprintf(f_out, "Слот %d: Некорректный ID предмета\n", i);
+            continue;
+        }
+
         int item_price = 0;
 
-        if (current_id != ID_EMPTY) { // Если слот всёж не пустой, ищу его цену в прайс-листе торговца
+        if (current_id != ID_EMPTY) {
             FILE* f_in = fopen("input.txt", "r");
+
             if (f_in != NULL) {
                 char p_name[MAX_NAME_LEN];
                 int p_price;
 
-                while (fscanf(f_in, "%31s %d", p_name, &p_price) == 2) { 	// Печатаю цены у торговца
+                while (fscanf_s(f_in, "%31s %d",
+                    p_name, (unsigned)_countof(p_name), &p_price) == 2) {
+
                     if (strcmp(p_name, catalog[current_id]) == 0) {
                         item_price = p_price;
                         break;
                     }
                 }
+
                 fclose(f_in);
             }
         }
 
-        fprintf(f_out, "Слот %d: %s - %d монет\n", i, catalog[current_id], item_price); // Записываю стоимость конкретного слота
+        fprintf(f_out, "Слот %d: %s - %d монет\n",
+            i, catalog[current_id], item_price);
+
         total_sum += item_price;
 
-        if (current_id != ID_EMPTY && item_price > max_price) { // Ищу самый дорогой предмет
+        if (current_id != ID_EMPTY && item_price > max_price) {
             max_price = item_price;
-            strcpy(most_expensive_item, catalog[current_id]);
+
+            strcpy_s(
+                most_expensive_item,
+                MAX_NAME_LEN,
+                catalog[current_id]
+            );
         }
     }
 
     fprintf(f_out, "-----------------------------------\n");
-    fprintf(f_out, "Самый дорогой предмет: %s (%d монет)\n", most_expensive_item, max_price > -1 ? max_price : 0);
+    fprintf(f_out, "Самый дорогой предмет: %s (%d монет)\n",
+        most_expensive_item, max_price > -1 ? max_price : 0);
+
     fprintf(f_out, "Общая стоимость инвентаря: %d монет\n", total_sum);
     fprintf(f_out, "===================================\n");
 
     fclose(f_out);
+    return 1;
+}
+
+int save_player_diary(
+    const Player* player,
+    int day,
+    int hour,
+    const char catalog[MAX_ITEMS][MAX_NAME_LEN])
+{
+    if (player == NULL || catalog == NULL) {
+        return 0;
+    }
+
+    FILE* file = fopen("diary.txt", "a");
+
+    if (file == NULL) {
+        return 0;
+    }
+
+    fprintf(file, "=== ЗАПИСЬ В ДНЕВНИКЕ ===\n");
+    fprintf(file, "Фермер: %s\n", player->name);
+    fprintf(file, "Время: %d день, %d час\n", day, hour);
+    fprintf(file, "Содержимое рюкзака:\n");
+
+    for (int i = 0; i < INVENTORY_SIZE; i++) {
+        int item_id = player->inventory[i];
+
+        if (item_id >= 0 && item_id < MAX_ITEMS) {
+            fprintf(file, "  Слот %d: %s\n", i, catalog[item_id]);
+        }
+    }
+
+    fprintf(file, "=========================\n\n");
+
+    fclose(file);
     return 1;
 }

@@ -7,16 +7,18 @@
 
 #define MAX_ITEMS 10
 
-#define ID_EMPTY 0
-#define ID_WOOD 1
-#define ID_STONE 2
-#define ID_SEEDS 3
-#define ID_HOE 4
-#define ID_APPLE 5
-#define ID_SHOVEL 6
-#define ID_IRON 7
-#define ID_ROPE 8
-#define ID_CHAINSAW 9
+typedef enum ItemId {
+    ID_EMPTY = 0,
+    ID_WOOD,
+    ID_STONE,
+    ID_SEEDS,
+    ID_HOE,
+    ID_APPLE,
+    ID_SHOVEL,
+    ID_IRON,
+    ID_ROPE,
+    ID_CHAINSAW
+} ItemId;
 
 #define BASE_HEALTH 100
 #define BASE_STAMINA 50

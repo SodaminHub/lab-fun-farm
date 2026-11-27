@@ -122,7 +122,7 @@ void adventure(Player* player, int* current_day, int* current_hour)
             key = _getwch();
 
             if (key == 'q' || key == 'Q' ||
-                key == L'й' || key == L'Й')
+                key == 0x0439 || key == 0x0419)
             {
                 if (map->cells[player_y][player_x] == 'D' ||
                     emergency_evacuation)

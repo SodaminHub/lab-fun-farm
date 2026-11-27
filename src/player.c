@@ -29,8 +29,9 @@ Player* create_player(void)
 
     printf("Введите имя фермера: ");
 
-    if (scanf("%31s", player->name) != 1)
+    if (scanf_s("%31s", player->name, (unsigned)_countof(player->name)) != 1)
     {
+        printf("Ошибка ввода имени фермера!\n");
         free(player);
         return NULL;
     }

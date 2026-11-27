@@ -13,522 +13,6 @@
 
 #define DAY_HOURS 24
 
-
-int safe_scan(int* value) { // Проверяю на введение числа, в противном случае возвращаю ошибку и обратно к введению значения.
-	if (scanf("%d", value) != 1) {
-		printf("Ошибка: Введено не число!\n");
-		while (getchar() != '\n');
-		return 0;
-	}
-	return 1;
-}
-
-void load_item_catalog(char catalog[MAX_ITEMS][MAX_NAME_LEN]) { // Считываю названия из файла в этот массив
-	FILE* f_items = fopen("items.txt", "r");
-
-	if (f_items != NULL) {
-		int temp_id;
-		char temp_name[MAX_NAME_LEN];
-		while (fscanf(f_items, "%d %31s", &temp_id, temp_name) == 2) {
-			if (temp_id >= 0 && temp_id < MAX_ITEMS) {
-				strcpy(catalog[temp_id], temp_name);
-			}
-		}
-		fclose(f_items);
-	}
-	else { // В противном случаем предупреждаю об отсутсвии шайтан файла и заполняю массив дефолтными нормисами
-		printf("Предупреждение: Файл items.txt не найден! Загружены стандартные названия.\n");
-		strcpy(catalog[ID_EMPTY], "Пусто");
-		strcpy(catalog[ID_WOOD], "Древесина");
-		strcpy(catalog[ID_STONE], "Камень");
-		strcpy(catalog[ID_SEEDS], "Семена");
-		strcpy(catalog[ID_HOE], "Тяпка");
-		strcpy(catalog[ID_APPLE], "Яблоко");
-		strcpy(catalog[ID_SHOVEL], "Лопата");
-		strcpy(catalog[ID_IRON], "Железо");
-		strcpy(catalog[ID_ROPE], "Веревка");
-		strcpy(catalog[ID_CHAINSAW], "Бензопила");
-	}
-}
-
-int find_item_id(const char catalog[MAX_ITEMS][MAX_NAME_LEN], const char* name) {
-	for (int i = 0; i < MAX_ITEMS; i++) {
-		if (strcmp(catalog[i], name) == 0) {
-			return i;
-		}
-	}
-	return -1;
-}
-
-int save_to_diary(const char* name, int day, int hour, const int* inv, const char catalog[MAX_ITEMS][MAX_NAME_LEN]) {
-	FILE* f_diary = fopen("diary.txt", "a");
-	if (f_diary == NULL) {
-		return 0;
-	}
-
-	fprintf(f_diary, "=== ЗАПИСЬ В ДНЕВНИКЕ ===\n");
-	fprintf(f_diary, "Фермер: %s\n", name);
-	fprintf(f_diary, "Время: %d день, %d час\n", day, hour);
-	fprintf(f_diary, "Содержимое рюкзака:\n");
-	for (int i = 0; i < INVENTORY_SIZE; i++) {
-		fprintf(f_diary, "  Слот %d: %s\n", i, catalog[inv[i]]);
-	}
-	fprintf(f_diary, "=========================\n\n");
-
-	fclose(f_diary);
-	return 1;
-}
-
-
-void free_map(char** map, int height) {
-	if (map == NULL) {
-		return;
-	}
-	for (int i = 0; i < height; i++) // для каждой строки в рамках условия освобождаю память каждой конкретной строки
-		free(map[i]);
-	}
-
-	free(map); // освобождаю память массива указателей
-}
-
-char** allocate_map(int height, int width) {
-	char** map = malloc(height * sizeof(char*)); // выделяю память под указатели
-
-	if (map == NULL) {
-		return NULL;
-	}
-
-	for (int i = 0; i < height; i++) { // записываю нули чтобы каждый указатель был изначально пустым
-		map[i] = NULL;
-	}
-
-	for (int i = 0; i < height; i++) {
-		map[i] = malloc(width * sizeof(char)); // выделяю память под сами строки
-
-		if (map[i] == NULL) { // если не получилось выделить память у какой нибудь строке
-			free_map(map, height);
-			return NULL;
-		}
-	}
-
-	return map;
-}
-
-void generate_map(char** map, int height, int width) {
-	int obstacle_percent = MIN_OBSTACLE_PERCENT + rand() % (MAX_OBSTACLE_PERCENT - MIN_OBSTACLE_PERCENT + 1); // выбираю процент препятствий
-
-	for (int i = 0; i < height; i++) { // перебираю строки
-		for (int j = 0; j < width; j++) { // перебираю столбцы
-			if (i == 0 || i == height - 1 || j == 0 || j == width - 1) { 
-				map[i][j] = '#'; // стенки
-			}
-			else {
-				int chance = rand() % 100;
-
-				if (chance < obstacle_percent) {
-					map[i][j] = (rand() % 2 == 0) ? 'T' : 'R';  // препятствия
-				}
-				else {
-					map[i][j] = '.'; // свободные для ходьбы поля
-				}
-			}
-		}
-	}
-}
-
-void print_map(char** map, int height, int width,
-	int player_y, int player_x) {
-
-	for (int i = 0; i < height; i++) {
-		for (int j = 0; j < width; j++) {
-
-			if (i == player_y && j == player_x) { 
-				printf("@ "); // игрок
-			}
-			else {
-				printf("%c ", map[i][j]); // вывожу любой другой символ
-			}
-		}
-		printf("\n");
-	}
-}
-
-int control_player(char** map, int height, int width,
-	int* player_y, int* player_x, int key) {
-
-	int new_y = *player_y;
-	int new_x = *player_x;
-
-	switch (key) {
-	case 'w':
-	case 'W':
-	case L'ц':
-	case L'Ц':
-		new_y--;
-		break;
-
-	case 's':
-	case 'S':
-	case L'ы':
-	case L'Ы':
-		new_y++;
-		break;
-
-	case 'a':
-	case 'A':
-	case L'ф':
-	case L'Ф':
-		new_x--;
-		break;
-
-	case 'd':
-	case 'D':
-	case L'в':
-	case L'В':
-		new_x++;
-		break;
-
-	default:
-		return 0;
-	}
-
-	if (new_y < 0 || new_y >= height ||
-		new_x < 0 || new_x >= width) {
-		return 0;
-	}
-
-	if (map[new_y][new_x] == '#' ||
-		map[new_y][new_x] == 'T' ||
-		map[new_y][new_x] == 'R' ||
-		map[new_y][new_x] == ' ') {
-		return 0;
-	}
-
-	*player_y = new_y;
-	*player_x = new_x;
-
-	return 1;
-}
-
-int place_stairs(char** map, int height, int width, char stair,
-	int excluded_y, int excluded_x) {
-
-	int free_cells = 0;
-
-
-	for (int i = 1; i < height - 1; i++) {
-		for (int j = 1; j < width - 1; j++) {
-			if (map[i][j] == '.' &&
-				!(i == excluded_y && j == excluded_x)) {
-				free_cells++;
-			}
-		}
-	}
-
-	if (free_cells == 0) {
-		return 0;
-	}
-
-	int target = rand() % free_cells; // случайный номер клетки
-
-	for (int i = 1; i < height - 1; i++) {
-		for (int j = 1; j < width - 1; j++) {
-			if (map[i][j] == '.' &&
-				!(i == excluded_y && j == excluded_x)) {
-
-				if (target == 0) {
-					map[i][j] = stair;
-					return 1;
-				}
-
-				target--;
-			}
-		}
-	}
-
-	return 0;
-}
-
-	
-
-
-int place_stairs_up(char** map, int height, int width,
-	int* stair_y, int* stair_x) {
-
-	int free_cells = 0;
-
-	for (int i = 1; i < height - 1; i++) {
-		for (int j = 1; j < width - 1; j++) {
-			if (map[i][j] == '.') {
-				free_cells++;
-			}
-		}
-	}
-
-	if (free_cells == 0) {
-		return 0;
-	}
-
-	int target = rand() % free_cells;
-
-	for (int i = 1; i < height - 1; i++) {
-		for (int j = 1; j < width - 1; j++) {
-			if (map[i][j] == '.') {
-
-				if (target == 0) {
-					map[i][j] = 'U';
-					*stair_y = i;
-					*stair_x = j;
-					return 1;
-				}
-
-				target--;
-			}
-		}
-	}
-
-	return 0;
-}
-
-
-int possible_path(char** map, int height, int width,
-	int start_y, int start_x, int target_y, int target_x) {
-
-	int visited[30][30] = { 0 };
-
-	int queue_y[900];
-	int queue_x[900];
-
-	int front = 0;
-	int rear = 0;
-
-	queue_y[rear] = start_y;
-	queue_x[rear] = start_x;
-	rear++;
-
-	visited[start_y][start_x] = 1;
-
-	int dy[4] = { -1, 1, 0, 0 };
-	int dx[4] = { 0, 0, -1, 1 };
-
-	while (front < rear) {
-
-		int y = queue_y[front];
-		int x = queue_x[front];
-		front++;
-
-		if (y == target_y && x == target_x) {
-			return 1;
-		}
-
-		for (int i = 0; i < 4; i++) {
-
-			int new_y = y + dy[i];
-			int new_x = x + dx[i];
-
-			if (new_y < 0 || new_y >= height ||
-				new_x < 0 || new_x >= width) {
-				continue;
-			}
-
-			if (visited[new_y][new_x]) {
-				continue;
-			}
-
-			if (map[new_y][new_x] == '#' ||
-				map[new_y][new_x] == 'T' ||
-				map[new_y][new_x] == 'R') {
-				continue;
-			}
-
-			visited[new_y][new_x] = 1;
-
-			queue_y[rear] = new_y;
-			queue_x[rear] = new_x;
-			rear++;
-		}
-	}
-
-	return 0;
-}
-
-int collapse_floor(char** map, int height, int width,
-	int layer, int player_y, int player_x) {
-
-	int top = 1 + layer;
-	int bottom = height - 2 - layer;
-	int left = 1 + layer;
-	int right = width - 2 - layer;
-
-	int stair_collapsed = 0;
-
-	if (top > bottom || left > right) { // а существует ли слой? Если выполняется условие то уже нет
-		return 0;
-	}
-
-	for (int i = top; i <= bottom; i++) { // перебираю клетки для подходящего слоя
-		for (int j = left; j <= right; j++) {
-
-			if (i != top && i != bottom && // не выбираем края а выбираем всю остальную доступную часть
-				j != left && j != right) {
-				continue;
-			}
-
-			if (i == player_y && j == player_x) { // защита клетки игрока
-				continue;
-			}
-
-			if (map[i][j] == 'U') {
-				stair_collapsed = 1; // а вот и обрушение
-			}
-
-			map[i][j] = ' ';
-		}
-	}
-
-	return stair_collapsed;
-}
-
-
-void adventure(void) {
-	printf("\n=== БАШНЯ ===\n");
-
-	int depth = 1;
-	int height;
-	int width;
-	int player_y = 1;
-	int player_x = 1;
-	int key;
-
-	char** map = NULL;
-
-	while (1) {
-
-		height = MIN_MAP_SIZE +
-			rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
-
-		width = MIN_MAP_SIZE +
-			rand() % (MAX_MAP_SIZE - MIN_MAP_SIZE + 1);
-
-		map = allocate_map(height, width);
-
-		if (map == NULL) {
-			printf("Ошибка выделения памяти!\n");
-			return;
-		}
-
-		int map_created = 0;
-		int stair_y = -1;
-		int stair_x = -1;
-
-		for (int attempt = 0; attempt < 100; attempt++) {
-
-			generate_map(map, height, width);
-
-			player_y = 1;
-			player_x = 1;
-
-			map[player_y][player_x] = 'D';
-
-			if (!place_stairs_up(map, height, width,
-				&stair_y, &stair_x)) {
-				continue;
-			}
-
-			if (possible_path(map, height, width,
-				player_y, player_x, stair_y, stair_x)) {
-				map_created = 1;
-				break;
-			}
-		}
-
-		if (!map_created) {
-			printf("Не удалось создать проходимый этаж!\n");
-			free_map(map, height);
-			return;
-		}
-
-		printf("\nЭтаж: %d\n", depth);
-		printf("Размер карты: %d x %d\n", height, width);
-
-		print_map(map, height, width, player_y, player_x);
-
-		int next_floor = 0;
-		int moves = 0;
-		int collapsed_layers = 0;
-		int emergency_evacuation = 0;
-
-		while (1) {
-
-			if (emergency_evacuation) {
-				printf("\nЛестница U провалилась! Срочно эвакуируйтесь: Q!\n");
-			}
-			else {
-				printf("\nW A S D | Q - домой\n");
-			}
-
-			key = _getwch();
-
-			if (key == 'q' || key == 'Q' ||
-				key == L'й' || key == L'Й') {
-
-				if (map[player_y][player_x] == 'D' ||
-					emergency_evacuation) {
-
-					free_map(map, height);
-					printf("\nВы вернулись домой!\n");
-					return;
-				}
-
-				printf("Чтобы вернуться домой, найдите D!\n");
-				continue;
-			}
-
-			if (emergency_evacuation) {
-				printf("Лестница вверх разрушена! Нажмите Q для эвакуации!\n");
-				continue;
-			}
-
-			if (!control_player(map, height, width,
-				&player_y, &player_x, key)) {
-				printf("Нельзя пройти в этом направлении!\n");
-				continue;
-			}
-
-			moves++;
-
-			if (map[player_y][player_x] == 'U') {
-				next_floor = 1;
-				break;
-			}
-
-			if (moves % 5 == 0) {
-
-				int stair_collapsed = collapse_floor(
-					map, height, width,
-					collapsed_layers,
-					player_y, player_x
-				);
-
-				collapsed_layers++;
-
-				if (stair_collapsed) {
-					emergency_evacuation = 1;
-				}
-			}
-
-			print_map(map, height, width, player_y, player_x);
-		}
-
-		if (next_floor) {
-			free_map(map, height);
-			map = NULL;
-			depth++;
-		}
-	}
-}
-
-
 	
 
 	
@@ -544,44 +28,103 @@ int main()
 	int userAction;
 
 	printf("Добро пожаловать!\n");
-	player = create_player();
-
-	if (player == NULL) {
-		return 1;
-	}
 
 	char item_names[MAX_ITEMS][MAX_NAME_LEN];
 	load_item_catalog(item_names, "items.txt");
 
 	while (1) {
-		printf("\n=== ПЕРВЫЕ ШАГИ ВЕСЁЛОГО ФЕРМЕРА. Здарова, %s ===\n", player->name);
+		if (player != NULL) {
+			printf("\n=== ПЕРВЫЕ ШАГИ ВЕСЁЛОГО ФЕРМЕРА. Здарова, %s ===\n", player->name);
+		}
+		else {
+			printf("\n=== ПЕРВЫЕ ШАГИ ВЕСЁЛОГО ФЕРМЕРА ===\n");
+		}
 		printf(" 0. Выйти из игры\n");
-		printf(" 1. Посмотреть на часы\n");
-		printf(" 2. Поработать на ферме\n");
-		printf(" 3. Проверить инвентарь\n");
-		printf(" 4. Положить предмет в инвентарь\n");
-		printf(" 5. Выбросить предмет\n");
-		printf(" 6. Проверить соседние слоты\n");
-		printf(" 7. Поиск предмета в рюкзаке по названию\n");
-		printf(" 8. Записать состояние в дневник фермера (diary.txt)\n");
-		printf(" 9. Оценка рюкзака у скупщика\n");
-		printf("10. Отправиться в приключение\n");
-		printf("Выберите действие: ");
+		printf(" 1. Создать / пересоздать персонажа\n");
+		printf(" 2. Карточка персонажа\n");
+		printf(" 3. Посмотреть на часы\n");
+		printf(" 4. Поработать на ферме\n");
+		printf(" 5. Проверить инвентарь\n");
+		printf(" 6. Положить предмет в инвентарь\n");
+		printf(" 7. Выбросить предмет\n");
+		printf(" 8. Проверить соседние слоты\n");
+		printf(" 9. Поиск предмета в рюкзаке по названию\n");
+		printf("10. Записать состояние в дневник фермера (diary.txt)\n");
+		printf("11. Оценка рюкзака у скупщика\n");
+		printf("12. Отправиться в приключение\n");
 
 		if (!safe_scan("%d", &userAction)) { // Главное меню защищено от ввода букв
 			continue;
 		}
+		if (player == NULL && userAction >= 3 && userAction <= 12) {
+			printf("Сначала создайте персонажа!\n");
+			continue;
+		}
+
 		switch (userAction) {
 		case 0:
 			printf("Выход из игры. Возвращайтесь ещё!\n");
 			free_player(&player);
 			return 0;
 
-		case 1:
+		case 1: {
+			if (player != NULL) {
+				int answer;
+
+				printf("Персонаж уже существует. Вы уверены, что хотите удалить его и создать нового?\n");
+				printf("1 — Да, пересоздать\n");
+				printf("0 — Нет, вернуться в меню\n");
+
+				if (!safe_scan("%d", &answer)) {
+					break;
+				}
+
+				if (answer != 1) {
+					printf("Пересоздание отменено.\n");
+					break;
+				}
+
+				free_player(&player);
+			}
+
+			player = create_player();
+
+			if (player == NULL) {
+				printf("Не удалось создать персонажа.\n");
+			}
+
+			break;
+		}
+
+		case 2:
+			if (player == NULL) {
+				printf("Сначала создайте персонажа (пункт 1)!\n");
+				break;
+			}
+
+			show_player(player);
+
+			printf("Дата: %d день\n", current_day);
+			printf("Время: %02d:00\n", current_hour);
+
+			printf("Инвентарь:\n");
+			for (int i = 0; i < INVENTORY_SIZE; i++) {
+				int item_id = player->inventory[i];
+
+				if (item_id >= 0 && item_id < MAX_ITEMS) {
+					printf("  Слот %d: %s\n", i, item_names[item_id]);
+				}
+				else {
+					printf("  Слот %d: Неизвестный предмет\n", i);
+				}
+			}
+			break;
+
+		case 3:
 			printf("Текущее время : %d день %d час\n", current_day, current_hour);
 			break;
 
-		case 2: {
+		case 4: {
 			int work_hours;
 			printf("Сколько часов вы хотите потратить на работу? ");
 
@@ -601,16 +144,22 @@ int main()
 			break;
 		}
 
-		case 3:
+		case 5:
 			printf("\n--- СОДЕРЖИМОЕ ИНВЕНТАРЯ ---\n");
 			for (int i = 0; i < INVENTORY_SIZE; i++) {
-				printf("Слот %d: [%d] - %s\n",
-					i, player->inventory[i],
-					item_names[player->inventory[i]]);
+				int item_id = player->inventory[i];
+
+				if (item_id >= 0 && item_id < MAX_ITEMS) {
+					printf("Слот %d: [%d] - %s\n",
+						i, item_id, item_names[item_id]);
+				}
+				else {
+					printf("Слот %d: Некорректный ID предмета\n", i);
+				}
 			}
 			break;
 
-		case 4: {
+		case 6: {
 			int slot;
 			int item_id;
 
@@ -635,7 +184,7 @@ int main()
 			break;
 		}
 
-		case 5: {
+		case 7: {
 			int slot;
 			printf("Какой предмет выбросить? (0-%d): ", INVENTORY_SIZE - 1);
 			if (!safe_scan("%d", &slot)) break;
@@ -650,7 +199,7 @@ int main()
 			break;
 		}
 
-		case 6: {
+		case 8: {
 			int item_a;
 			int item_b;
 			int found = 0; // Переменная, нужная чтобы зафиксировать соседние слоты
@@ -673,13 +222,13 @@ int main()
 			}
 			break;
 		}
-		case 7: {
+		case 9: {
 			char search_name[MAX_NAME_LEN];
 			printf("Введите название предмета для поиска: ");
 			if (!safe_scan("%31s", search_name)) break;
 			while (getchar() != '\n');
 
-			int target_id = find_item_id(search_name);
+			int target_id = find_item_id(item_names, search_name);
 
 			if (target_id == -1) {
 				printf("Предмета с названием \"%s\" нет в каталоге игры.\n", search_name);
@@ -701,24 +250,35 @@ int main()
 			break;
 		}
 
-		case 8: {
+		case 10: {
 			printf("\n--- СВОДКА ДЛЯ ДНЕВНИКА ---\n");
 			printf("Фермер: %s\n", player->name);
 			printf("Время: %d день, %d час\n", current_day, current_hour);
 			printf("Содержимое рюкзака:\n");
 
 			for (int i = 0; i < INVENTORY_SIZE; i++) {
-				printf("  Слот %d: %s\n",
-					i, item_names[player->inventory[i]]);
+				int item_id = player->inventory[i];
+
+				if (item_id >= 0 && item_id < MAX_ITEMS) {
+					printf("  Слот %d: %s\n", i, item_names[item_id]);
+				}
+				else {
+					printf("  Слот %d: Неизвестный предмет\n", i);
+				}
 			}
 
 			printf("---------------------------\n");
-			save_to_diary("Состояние фермера сохранено.");
-			printf("Запись добавлена в дневник!\n");
+
+			if (save_player_diary(player, current_day, current_hour, item_names)) {
+				printf("Запись добавлена в дневник!\n");
+			}
+			else {
+				printf("Не удалось сохранить запись в дневник!\n");
+			}
 
 			break;
 		}
-		case 9: {
+		case 11: {
 			if (value_inventory(player->inventory, item_names)) {
 				printf("\nВедомость успешно сохранена в файл output.txt!\n");
 
@@ -739,7 +299,7 @@ int main()
 			break;
 		}
 
-		case 10:
+		case 12:
 			adventure(player, &current_day, &current_hour);
 			break;
 
