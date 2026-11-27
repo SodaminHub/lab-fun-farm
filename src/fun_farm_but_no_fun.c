@@ -52,11 +52,11 @@ int main()
 		printf("10. Записать состояние в дневник фермера (diary.txt)\n");
 		printf("11. Оценка рюкзака у скупщика\n");
 		printf("12. Отправиться в приключение\n");
-
+		printf("13. Купить подсумок (+%d к вместимости, цена %d золота)\n", POUCH_CAPACITY_BONUS, POUCH_PRICE);
 		if (!safe_scan("%d", &userAction)) { // Главное меню защищено от ввода букв
 			continue;
 		}
-		if (player == NULL && userAction >= 3 && userAction <= 12) {
+		if (player == NULL && userAction >= 3 && userAction <= 13) {
 			printf("Сначала создайте персонажа!\n");
 			continue;
 		}
@@ -105,8 +105,8 @@ int main()
 
 			printf("Инвентарь:\n");
 			for (int i = 0; i < INVENTORY_SIZE; i++) {
-				int item_id = player->inventory[i];
-
+				int item_id = player->backpack.slots[i];
+				 
 				if (item_id >= 0 && item_id < MAX_ITEMS) {
 					printf("  Слот %d: %s\n", i, item_names[item_id]);
 				}
@@ -239,12 +239,21 @@ int main()
 
 		case 5:
 			printf("\n--- СОДЕРЖИМОЕ ИНВЕНТАРЯ ---\n");
+			printf("Вес рюкзака: %d/%d\n",
+				player->backpack.current_weight,
+				player->backpack.max_capacity);
+
+			printf("Состояние: %s\n",
+				player->backpack.load_state == LIGHT ? "Налегке" :
+				player->backpack.load_state == NORMAL ? "Норма" : "Перегруз");
+
 			for (int i = 0; i < INVENTORY_SIZE; i++) {
-				int item_id = player->inventory[i];
+				int item_id = player->backpack.slots[i];
 
 				if (item_id >= 0 && item_id < MAX_ITEMS) {
-					printf("Слот %d: [%d] - %s\n",
-						i, item_id, item_names[item_id]);
+					printf("Слот %d: [%d] - %s (%d ед. веса)\n",
+						i, item_id, item_names[item_id],
+						get_item_weight(item_id));
 				}
 				else {
 					printf("Слот %d: Некорректный ID предмета\n", i);
@@ -272,7 +281,8 @@ int main()
 				break;
 			}
 
-			player->inventory[slot] = item_id;
+			player->backpack.slots[slot] = item_id;
+			update_backpack(&player->backpack);
 			printf("Предмет с ID %d успешно положен в слот %d.\n", item_id, slot);
 			break;
 		}
@@ -287,7 +297,8 @@ int main()
 				break;
 			}
 
-			player->inventory[slot] = ID_EMPTY; // Записываю в ячейку значение ID_EMPTY, т.е. 0 и избавляемся так от предмета.
+			player->backpack.slots[slot] = ID_EMPTY; // Записываю в ячейку значение ID_EMPTY, т.е. 0 и избавляемся так от предмета.
+			update_backpack(&player->backpack);
 			printf("Предмет %d выброшен.\n", slot);
 			break;
 		}
@@ -310,8 +321,8 @@ int main()
 			}
 
 			for (int i = 0; i < INVENTORY_SIZE - 1; i++) {
-				if ((player->inventory[i] == item_a && player->inventory[i + 1] == item_b) || // Проверяем два варианта расположения вещей
-					(player->inventory[i] == item_b && player->inventory[i + 1] == item_a)) {
+				if ((player->backpack.slots[i] == item_a && player->backpack.slots[i + 1] == item_b) || // Проверяем два варианта расположения вещей
+					(player->backpack.slots[i] == item_b && player->backpack.slots[i + 1] == item_a)) {
 					printf("Предметы лежат в слотах %d и %d.\n", i, i + 1);
 					found = 1;
 				}
@@ -340,7 +351,7 @@ int main()
 			int found_slots = 0;
 			printf("Результаты поиска для \"%s\" (ID %d):\n", search_name, target_id);
 			for (int i = 0; i < INVENTORY_SIZE; i++) {
-				if (player->inventory[i] == target_id) {
+				if (player->backpack.slots[i] == target_id) {
 					printf("-> Найдено в слоте %d\n", i);
 					found_slots++;
 				}
@@ -359,7 +370,7 @@ int main()
 			printf("Содержимое рюкзака:\n");
 
 			for (int i = 0; i < INVENTORY_SIZE; i++) {
-				int item_id = player->inventory[i];
+				int item_id = player->backpack.slots[i];
 
 				if (item_id >= 0 && item_id < MAX_ITEMS) {
 					printf("  Слот %d: %s\n", i, item_names[item_id]);
@@ -382,7 +393,7 @@ int main()
 		}
 
 		case 11: {
-			if (value_inventory(player->inventory, item_names)) {
+			if (value_inventory(player->backpack.slots, item_names)) {
 				printf("\nВедомость успешно сохранена в файл output.txt!\n");
 
 				FILE* f_out_read = fopen("output.txt", "r");
@@ -409,10 +420,27 @@ int main()
 			adventure(player, &current_day, &current_hour);
 			break;
 
+		case 13:
+			if (player->gold < POUCH_PRICE)
+			{
+				printf("Недостаточно золота! Нужно %d монет.\n", POUCH_PRICE);
+				break;
+			}
+
+			player->gold -= POUCH_PRICE;
+			player->backpack.max_capacity += POUCH_CAPACITY_BONUS;
+			update_backpack(&player->backpack);
+
+			printf("Вы купили подсумок! Вместимость рюкзака: %d\n",
+				player->backpack.max_capacity);
+			printf("Осталось золота: %d\n", player->gold);
+			break;
+
 		default:
 			printf("Неверный пункт меню. Попробуйте еще раз.\n");
 			break;
 		}
+
 	}
 
 	return 0;

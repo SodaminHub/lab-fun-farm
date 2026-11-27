@@ -177,12 +177,20 @@ int save_player_diary(
     fprintf(file, "Фермер: %s\n", player->name);
     fprintf(file, "Время: %d день, %d час\n", day, hour);
     fprintf(file, "Содержимое рюкзака:\n");
+    fprintf(file, "Общий вес: %d/%d\n",
+        player->backpack.current_weight,
+        player->backpack.max_capacity);
+
+    fprintf(file, "Состояние нагрузки: %s\n",
+        player->backpack.load_state == LIGHT ? "Налегке" :
+        player->backpack.load_state == NORMAL ? "Норма" : "Перегруз");
 
     for (int i = 0; i < INVENTORY_SIZE; i++) {
-        int item_id = player->inventory[i];
+        int item_id = player->backpack.slots[i];
 
         if (item_id >= 0 && item_id < MAX_ITEMS) {
-            fprintf(file, "  Слот %d: %s\n", i, catalog[item_id]);
+            fprintf(file, "  Слот %d: %s (%d ед. веса)\n",
+                i, catalog[item_id], get_item_weight(item_id));
         }
     }
 

@@ -7,6 +7,11 @@
 
 #define MAX_ITEMS 10
 
+#define BASE_BACKPACK_CAPACITY 35
+#define POUCH_CAPACITY_BONUS 10
+#define POUCH_PRICE 50
+
+
 typedef enum ItemId {
     ID_EMPTY = 0,
     ID_WOOD,
@@ -19,6 +24,19 @@ typedef enum ItemId {
     ID_ROPE,
     ID_CHAINSAW
 } ItemId;
+
+typedef enum LoadState {
+    LIGHT,
+    NORMAL,
+    OVERLOADED
+} LoadState;
+
+typedef struct Backpack {
+    int slots[INVENTORY_SIZE];
+    int current_weight;
+    int max_capacity;
+    LoadState load_state;
+} Backpack;
 
 #define BASE_HEALTH 100
 #define BASE_STAMINA 50
@@ -38,12 +56,15 @@ typedef struct Player {
     int x;
     int y;
 
-    int inventory[INVENTORY_SIZE];
+    Backpack backpack;
 } Player;
 
 Player* create_player(void);
 void free_player(Player** player);
 void show_player(const Player* player);
+
+int get_item_weight(int item_id);
+void update_backpack(Backpack* backpack);
 
 #endif
 

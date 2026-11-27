@@ -103,6 +103,12 @@ void adventure(Player* player, int* current_day, int* current_hour)
             player->stamina, player->max_stamina,
             player->gold);
 
+        printf("Вес: %d/%d | Нагрузка: %s\n",
+            player->backpack.current_weight,
+            player->backpack.max_capacity,
+            player->backpack.load_state == LIGHT ? "Налегке" :
+            player->backpack.load_state == NORMAL ? "Норма" : "Перегруз");
+
         print_map(map, player_y, player_x);
         int next_floor = 0;
         int moves = 0;
@@ -149,7 +155,8 @@ void adventure(Player* player, int* current_day, int* current_hour)
             }
 
             moves++;
-            player->stamina--;
+            int stamina_cost = player->backpack.load_state == OVERLOADED ? 3 : 1;
+            player->stamina -= stamina_cost;
 
             if (moves % 5 == 0)
             {
